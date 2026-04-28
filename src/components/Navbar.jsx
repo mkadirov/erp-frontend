@@ -1,10 +1,14 @@
-import { Bell, User, Menu } from "lucide-react";
-import { useLocation } from "react-router-dom";
-import { getUser } from "../utils/auth";
+import { Bell, User, Menu, LogOut } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getUser, logout } from "../utils/auth";
+
+
 
 export default function Navbar({ setOpen }) {
   const user = getUser();
   const location = useLocation();
+  const navigate = useNavigate();
+
 
   const path = location.pathname;
 
@@ -26,6 +30,11 @@ export default function Navbar({ setOpen }) {
 
   const title = titles[path] || "ERP System";
 
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
+
   return (
     <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8">
       <div className="flex items-center gap-3">
@@ -39,6 +48,8 @@ export default function Navbar({ setOpen }) {
 
         <h2 className="font-semibold text-slate-900">{title}</h2>
       </div>
+
+      
 
       <div className="flex items-center gap-3 md:gap-5">
         <div className="relative">
@@ -58,6 +69,16 @@ export default function Navbar({ setOpen }) {
           </p>
           <p className="text-xs text-slate-500">{user?.role}</p>
         </div>
+
+        <div className="flex items-center gap-4">
+  <button
+    onClick={handleLogout}
+    className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-red-600 cursor-pointer"
+    title="Logout"
+  >
+    <LogOut size={20} />
+  </button>
+</div>
       </div>
     </header>
   );

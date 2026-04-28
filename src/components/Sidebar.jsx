@@ -31,7 +31,7 @@ const menuByRole = {
     { label: "Stock", path: "/stock", icon: Warehouse },
     { label: "Projects", path: "/projects", icon: FolderKanban },
     { label: "Expenses", path: "/expenses", icon: ReceiptText },
-    { label: "Expense Categories", path: "/expense-categories", icon: Tags },
+    
     { label: "Audit Logs", path: "/audit-logs", icon: ScrollText },
   ],
   MANAGER: [
@@ -44,7 +44,7 @@ const menuByRole = {
   ACCOUNTANT: [
     { label: "Dashboard", path: "/dashboard", icon: BarChart3 },
     { label: "Expenses", path: "/expenses", icon: ReceiptText },
-    { label: "Expense Categories", path: "/expense-categories", icon: Tags },
+    
   ],
   WAREHOUSE: [
     { label: "Warehouse Dashboard", path: "/warehouse-dashboard", icon: Warehouse },

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   createCompany,
   createCompanyAdmin,
@@ -9,6 +10,7 @@ import {
 
 export default function Companies() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(null);
@@ -142,7 +144,10 @@ export default function Companies() {
 
             <tbody className="divide-y divide-gray-100">
               {companies.map((company) => (
-                <tr key={company.id}>
+                <tr key={company.id} 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => navigate(`/companies/${company.id}`)}
+                >
                   <td className="px-4 py-3 text-gray-500">{company.id}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {company.name}
@@ -165,12 +170,12 @@ export default function Companies() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <button
+                      {/* <button
                         onClick={() => setSelectedCompany(company)}
                         className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 hover:bg-gray-50"
                       >
                         Add Admin
-                      </button>
+                      </button> */}
 
                       <button
                         onClick={() =>
