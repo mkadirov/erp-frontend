@@ -2,7 +2,6 @@ import http from "./http";
 
 export async function getProducts() {
   const res = await http.get("/products");
-  console.log(res?.data);
   
   return res?.data?.data || res?.data;
 }

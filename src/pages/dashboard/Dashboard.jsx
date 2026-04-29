@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FolderKanban,
@@ -7,10 +8,22 @@ import {
   ReceiptText,
   AlertTriangle,
 } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 import { getDashboard } from "../../api/dashboard.api";
-import { getTransactions } from "../../api/transaction.api";
+import { getAllTransactionsForDashboard } from "../../api/transaction.api";
 import { getExpenses } from "../../api/expense.api";
 
 function formatMoney(value = 0) {
@@ -44,6 +57,31 @@ const COLORS = [
   "#ca8a04",
 ];
 
+const MONTHS = [
+  { value: 0, label: "Yanvar" },
+  { value: 1, label: "Fevral" },
+  { value: 2, label: "Mart" },
+  { value: 3, label: "Aprel" },
+  { value: 4, label: "May" },
+  { value: 5, label: "Iyun" },
+  { value: 6, label: "Iyul" },
+  { value: 7, label: "Avgust" },
+  { value: 8, label: "Sentabr" },
+  { value: 9, label: "Oktabr" },
+  { value: 10, label: "Noyabr" },
+  { value: 11, label: "Dekabr" },
+];
+
+function getYears() {
+  const currentYear = new Date().getFullYear();
+
+  return Array.from({ length: 6 }, (_, index) => currentYear - index);
+}
+
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
 function groupMaterialCosts(transactions = []) {
   const map = {};
 
@@ -68,6 +106,46 @@ function groupExpenseCosts(expenses = []) {
   });
 
   return Object.entries(map).map(([name, value]) => ({ name, value }));
+}
+
+function buildCostLineData({ transactions = [], expenses = [], year, month }) {
+  const daysInMonth = getDaysInMonth(year, month);
+
+  const data = Array.from({ length: daysInMonth }, (_, index) => ({
+    day: index + 1,
+    materialCost: 0,
+    expenseCost: 0,
+  }));
+
+  transactions
+    .filter((item) => item.type === "OUT")
+    .forEach((item) => {
+      const date = new Date(item.createdAt);
+
+      if (date.getFullYear() !== year || date.getMonth() !== month) {
+        return;
+      }
+
+      const dayIndex = date.getDate() - 1;
+      const cost = Number(item.quantity || 0) * Number(item.price || 0);
+
+      data[dayIndex].materialCost += cost;
+    });
+
+  expenses.forEach((item) => {
+    const date = new Date(item.date || item.createdAt);
+
+    if (date.getFullYear() !== year || date.getMonth() !== month) {
+      return;
+    }
+
+    const dayIndex = date.getDate() - 1;
+    const cost = Number(item.amount || 0);
+
+    data[dayIndex].expenseCost += cost;
+  });
+
+  return data;
 }
 
 function PieCard({ title, description, data = [] }) {
@@ -109,7 +187,85 @@ function PieCard({ title, description, data = [] }) {
   );
 }
 
+function CostLineChart({ data, selectedMonth, selectedYear, onMonthChange, onYearChange }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="font-semibold text-slate-900">
+            Xarajatlar dinamikasi
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Material va boshqa xarajatlarning kunlik taqqoslanishi
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <select
+            value={selectedMonth}
+            onChange={(e) => onMonthChange(Number(e.target.value))}
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none focus:border-blue-500"
+          >
+            {MONTHS.map((month) => (
+              <option key={month.value} value={month.value}>
+                {month.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none focus:border-blue-500"
+          >
+            {getYears().map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="h-96">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="day" />
+            <YAxis tickFormatter={(value) => `${value / 1000}k`} />
+            <Tooltip formatter={(value) => formatMoney(value)} />
+            <Legend />
+
+            <Line
+              type="monotone"
+              dataKey="materialCost"
+              name="Material xarajatlari"
+              stroke="#f97316"
+              strokeWidth={3}
+              dot={false}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="expenseCost"
+              name="Boshqa xarajatlar"
+              stroke="#0891b2"
+              strokeWidth={3}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const now = new Date();
+
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
   const {
     data: dashboardData,
     isLoading: dashboardLoading,
@@ -121,8 +277,8 @@ export default function Dashboard() {
   });
 
   const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: getTransactions,
+    queryKey: ["transactions-dashboard"],
+    queryFn: getAllTransactionsForDashboard,
   });
 
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
@@ -143,11 +299,21 @@ export default function Dashboard() {
     );
   }
 
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeExpenses = Array.isArray(expenses) ? expenses : [];
+
   const dashboard = dashboardData || {};
   const lowStockProducts = dashboard.lowStockProducts || [];
 
-  const materialChartData = groupMaterialCosts(transactions);
-  const expenseChartData = groupExpenseCosts(expenses);
+  const materialChartData = groupMaterialCosts(safeTransactions);
+  const expenseChartData = groupExpenseCosts(safeExpenses);
+
+  const lineChartData = buildCostLineData({
+    transactions: safeTransactions,
+    expenses: safeExpenses,
+    year: selectedYear,
+    month: selectedMonth,
+  });
 
   return (
     <div className="space-y-6">
@@ -201,6 +367,14 @@ export default function Dashboard() {
           color="bg-slate-100 text-slate-700"
         />
       </div>
+
+      <CostLineChart
+        data={lineChartData}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        onMonthChange={setSelectedMonth}
+        onYearChange={setSelectedYear}
+      />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <PieCard

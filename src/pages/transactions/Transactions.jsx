@@ -23,6 +23,9 @@ function formatDate(value) {
 export default function Transactions() {
   const queryClient = useQueryClient();
 
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const [form, setForm] = useState({
     type: "IN",
     productId: "",
@@ -33,12 +36,12 @@ export default function Transactions() {
   });
 
   const {
-    data: transactionsData = [],
+    data: transactionsResponse,
     isLoading: transactionsLoading,
     isError: transactionsError,
   } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: getTransactions,
+    queryKey: ["transactions", page, limit],
+    queryFn: () => getTransactions({ page, limit }),
   });
 
   const { data: productsData = [], isLoading: productsLoading } = useQuery({
@@ -51,12 +54,26 @@ export default function Transactions() {
     queryFn: getProjects,
   });
 
-  const transactions = Array.isArray(transactionsData)
-    ? transactionsData
-    : [];
+  const transactions = transactionsResponse?.data || [];
 
-  const products = Array.isArray(productsData?.products) ? productsData?.products : [];
-  const projects = Array.isArray(projectsData) ? projectsData : [];
+  const pagination = transactionsResponse?.pagination || {
+    total: 0,
+    page: 1,
+    limit,
+    totalPages: 1,
+  };
+
+  const products = Array.isArray(productsData?.products)
+    ? productsData.products
+    : Array.isArray(productsData)
+      ? productsData
+      : [];
+
+  const projects = Array.isArray(projectsData?.data)
+    ? projectsData.data
+    : Array.isArray(projectsData)
+      ? projectsData
+      : [];
 
   const createMutation = useMutation({
     mutationFn: createTransaction,
@@ -64,6 +81,8 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+
+      setPage(1);
 
       setForm({
         type: "IN",
@@ -140,9 +159,7 @@ export default function Transactions() {
   }
 
   function handleDelete(id) {
-    const confirmed = window.confirm(
-      "Bu transactionni o‘chirmoqchimisiz?"
-    );
+    const confirmed = window.confirm("Bu transactionni o‘chirmoqchimisiz?");
 
     if (confirmed) {
       deleteMutation.mutate(id);
@@ -164,9 +181,7 @@ export default function Transactions() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Transactionlar
-        </h1>
+        <h1 className="text-2xl font-bold text-slate-900">Transactionlar</h1>
         <p className="text-sm text-slate-500">
           Omborga kirim va projectga chiqim operatsiyalari
         </p>
@@ -364,6 +379,38 @@ export default function Transactions() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <p className="text-sm text-slate-500">
+          Jami: {pagination.total} ta transaction
+        </p>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Oldingi
+          </button>
+
+          <span className="text-sm text-slate-600">
+            {pagination.page} / {pagination.totalPages || 1}
+          </span>
+
+          <button
+            type="button"
+            disabled={page >= pagination.totalPages}
+            onClick={() =>
+              setPage((prev) => Math.min(prev + 1, pagination.totalPages || 1))
+            }
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Keyingi
+          </button>
+        </div>
       </div>
     </div>
   );
